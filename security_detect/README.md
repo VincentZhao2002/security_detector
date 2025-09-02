@@ -1,0 +1,400 @@
+# 敏感词检测库 (Security Detection Library)
+
+一个用于检测文本中敏感词的安全检测库，专门为大语言模型(LLM)输入安全检查而设计。
+
+## 功能特性
+
+- 🔍 **高效检测**: 基于正则表达式的快速敏感词检测
+- 🤖 **双重检测**: 支持本地检测 + 百度AI API双重检测，提高准确性
+- 🛡️ **LLM安全**: 专门为大语言模型输入设计的安全检查
+- 📊 **风险评估**: 提供风险等级和置信度评估
+- 🔧 **灵活配置**: 支持自定义敏感词表和检测参数
+- 📦 **批量处理**: 支持批量文本检测
+- 🎯 **精确匹配**: 支持大小写不敏感的精确匹配
+- 📈 **性能优化**: 针对大量敏感词进行了性能优化
+- 📋 **智能去重**: 自动处理重复敏感词，提供25,089个唯一敏感词
+- 🔄 **优雅降级**: API不可用时自动降级为本地检测
+
+## 安装
+
+### 环境要求
+
+- Python 3.7+
+- 无额外依赖包
+
+### 安装方法
+
+#### 方法1：使用Wheel包安装（推荐）
+
+```bash
+# 直接安装wheel包
+pip install security_detector-1.0.0-py3-none-any.whl
+
+# 或者从本地目录安装
+pip install ./security_detector-1.0.0-py3-none-any.whl
+```
+
+#### 方法2：使用自动安装脚本
+
+**Linux/macOS:**
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+**Windows:**
+```cmd
+install.bat
+```
+
+#### 方法3：从源码安装
+
+```bash
+# 克隆或下载代码到本地
+cd security_detect
+
+# 构建并安装
+python setup.py build
+python setup.py install
+
+# 或者使用pip
+pip install .
+```
+
+### 验证安装
+
+```bash
+# 检查是否安装成功
+python -c "from security_detector import SecurityDetector; print('✅ 安装成功')"
+
+# 运行示例
+python example.py
+
+# 运行测试
+python test_security_detector.py
+```
+
+### 快速开始
+
+```bash
+# 克隆或下载代码到本地
+cd security_detect
+
+# 运行示例
+python example.py
+
+# 运行测试
+python test_security_detector.py
+```
+
+## 使用方法
+
+### 基本使用
+
+```python
+from security_detector import SecurityDetector
+
+# 初始化检测器（使用默认敏感词表）
+detector = SecurityDetector()
+
+# 检测单个文本
+text = "这是一个需要检测的文本"
+result = detector.detect(text)
+
+print(f"是否安全: {result.is_safe}")
+print(f"风险等级: {result.risk_level}")
+print(f"置信度: {result.confidence}")
+print(f"发现的敏感词: {result.sensitive_words}")
+print(f"检测方法: {result.details.get('detection_method', 'unknown')}")
+
+# 如果是双重检测，可以查看详细信息
+if result.details.get('detection_method') == 'dual_detection':
+    local_result = result.details.get('local_result', {})
+    api_result = result.details.get('api_result', {})
+    print(f"本地检测结果: {local_result}")
+    print(f"API检测结果: {api_result}")
+```
+
+### LLM安全检查
+
+```python
+# 检查文本是否安全可以作为LLM输入
+user_input = "请帮我写一篇关于人工智能的文章"
+is_safe = detector.is_safe_for_llm(user_input)
+
+if is_safe:
+    print("✅ 文本安全，可以作为LLM输入")
+else:
+    print("❌ 文本不安全，不建议作为LLM输入")
+```
+
+### 批量检测
+
+```python
+# 批量检测多个文本
+texts = [
+    "安全文本1",
+    "包含敏感内容的文本",
+    "安全文本2"
+]
+
+results = detector.batch_detect(texts)
+
+for i, result in enumerate(results):
+    status = "安全" if result.is_safe else "不安全"
+    print(f"文本{i+1}: {status}")
+```
+
+### 敏感词管理
+
+```python
+# 添加新的敏感词
+detector.add_sensitive_word("新敏感词")
+
+# 移除敏感词
+detector.remove_sensitive_word("要移除的敏感词")
+
+# 获取所有敏感词
+all_words = detector.get_sensitive_words()
+print(f"当前共有 {len(all_words)} 个敏感词")
+```
+
+### 自定义敏感词表
+
+```python
+# 使用自定义敏感词表文件
+custom_detector = SecurityDetector("/path/to/your/sensitive_words.txt")
+```
+
+### 双重检测功能
+
+本库支持本地检测 + 百度AI API双重检测，提高检测准确性：
+
+```python
+# 启用双重检测（默认）
+detector = SecurityDetector(enable_api_detection=True)
+
+# 仅使用本地检测
+detector = SecurityDetector(enable_api_detection=False)
+
+# 动态控制API检测
+detector.set_api_detection(True)   # 启用API检测
+detector.set_api_detection(False)  # 禁用API检测
+
+# 检查API是否可用
+if detector.is_api_available():
+    print("API检测可用")
+else:
+    print("API检测不可用，将使用本地检测")
+
+# 获取当前检测方法
+print(f"当前检测方法: {detector.get_detection_method()}")
+```
+
+#### 双重检测配置
+
+在 `config.py` 中可以配置双重检测参数：
+
+```python
+# 双重检测配置
+DUAL_DETECTION_CONFIG = {
+    "enable_dual_detection": True,  # 是否启用双重检测
+    "local_weight": 0.3,           # 本地检测权重
+    "api_weight": 0.7,             # API检测权重
+    "min_confidence": 0.6          # 最小置信度阈值
+}
+
+# API配置
+API_CONFIG = {
+    "api_key": "your_api_key",     # 百度AI API Key
+    "secret_key": "your_secret_key" # 百度AI Secret Key
+}
+```
+
+#### 双重检测优势
+
+- **提高准确性**: 结合本地规则和AI语义理解
+- **优雅降级**: API不可用时自动使用本地检测
+- **灵活配置**: 可调整本地和API检测的权重
+- **详细反馈**: 提供两种检测方法的详细结果
+
+## API 文档
+
+### SecurityDetector 类
+
+主要的检测器类，用于敏感词检测。
+
+#### 初始化参数
+
+- `sensitive_words_file` (str, optional): 敏感词表文件路径，默认为 `data/merged_row_by_row_cleaned.txt`
+- `use_original_file` (bool, optional): 是否使用原始文件（包含重复），默认False使用去重后的文件
+- `enable_api_detection` (bool, optional): 是否启用API检测，默认使用配置文件设置
+- `api_key` (str, optional): 百度AI API Key，默认使用配置文件设置
+- `secret_key` (str, optional): 百度AI Secret Key，默认使用配置文件设置
+
+#### 主要方法
+
+##### `detect(text: str) -> DetectionResult`
+
+检测文本中的敏感词。
+
+**参数:**
+- `text` (str): 待检测的文本
+
+**返回:**
+- `DetectionResult`: 检测结果对象
+
+##### `is_safe_for_llm(text: str) -> bool`
+
+判断文本是否安全可以作为大语言模型的输入。
+
+**参数:**
+- `text` (str): 待检测的文本
+
+**返回:**
+- `bool`: True表示安全，False表示不安全
+
+##### `batch_detect(texts: List[str]) -> List[DetectionResult]`
+
+批量检测多个文本。
+
+**参数:**
+- `texts` (List[str]): 待检测的文本列表
+
+**返回:**
+- `List[DetectionResult]`: 检测结果列表
+
+##### `add_sensitive_word(word: str)`
+
+添加新的敏感词。
+
+**参数:**
+- `word` (str): 要添加的敏感词
+
+##### `remove_sensitive_word(word: str)`
+
+移除敏感词。
+
+**参数:**
+- `word` (str): 要移除的敏感词
+
+##### `get_sensitive_words() -> List[str]`
+
+获取所有敏感词列表。
+
+**返回:**
+- `List[str]`: 敏感词列表
+
+##### `set_api_detection(enable: bool)`
+
+启用或禁用API检测。
+
+**参数:**
+- `enable` (bool): 是否启用API检测
+
+##### `is_api_available() -> bool`
+
+检查API检测是否可用。
+
+**返回:**
+- `bool`: True表示可用，False表示不可用
+
+##### `get_detection_method() -> str`
+
+获取当前检测方法描述。
+
+**返回:**
+- `str`: 检测方法描述（"双重检测（本地+API）" 或 "本地检测"）
+
+### DetectionResult 类
+
+检测结果数据类。
+
+#### 属性
+
+- `is_safe` (bool): 是否安全
+- `sensitive_words` (List[str]): 发现的敏感词列表
+- `risk_level` (str): 风险等级 ("safe", "low", "medium", "high")
+- `confidence` (float): 置信度 (0.0-1.0)
+- `details` (Dict): 详细信息
+
+## 风险等级说明
+
+- **safe**: 安全，未发现敏感词
+- **low**: 低风险，发现少量敏感词
+- **medium**: 中等风险，发现多个敏感词或敏感词密度较高
+- **high**: 高风险，发现大量敏感词或敏感词密度很高
+
+## 性能特性
+
+- **检测速度**: 平均每个文本检测时间 < 1毫秒
+- **内存使用**: 支持大量敏感词（>40,000个）的高效存储
+- **并发支持**: 线程安全，支持多线程并发检测
+
+## 配置说明
+
+可以通过修改 `config.py` 文件来自定义检测行为：
+
+```python
+# 风险等级阈值
+DETECTION_CONFIG = {
+    "risk_thresholds": {
+        "high": {"word_count": 5, "density": 0.1},
+        "medium": {"word_count": 2, "density": 0.05},
+        "low": {"word_count": 1, "density": 0.01}
+    }
+}
+```
+
+## 测试
+
+运行测试套件：
+
+```bash
+# 基本功能测试
+python test_security_detector.py
+
+# 双重检测功能测试
+python test_dual_detection.py
+```
+
+测试包括：
+- 单元测试
+- 集成测试
+- 性能测试
+- 边界条件测试
+- 双重检测功能测试
+- API检测功能测试
+
+## 示例
+
+查看 `example.py` 文件获取完整的使用示例，包括：
+
+- 基本使用示例
+- LLM安全检查示例
+- 批量检测示例
+- 敏感词管理示例
+- 性能测试示例
+
+## 注意事项
+
+1. **敏感词表格式**: 每行一个敏感词，支持UTF-8编码
+2. **文件路径**: 确保敏感词表文件路径正确
+3. **内存使用**: 大量敏感词会占用更多内存
+4. **性能考虑**: 首次加载敏感词表需要一些时间
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进这个库。
+
+## 许可证
+
+MIT License
+
+## 更新日志
+
+### v1.0.0
+- 初始版本发布
+- 支持基本的敏感词检测功能
+- 提供LLM安全检查
+- 支持批量检测和敏感词管理 

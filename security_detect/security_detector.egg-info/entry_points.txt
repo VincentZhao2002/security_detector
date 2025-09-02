@@ -1,0 +1,2 @@
+[console_scripts]
+security-detector = cli:main
